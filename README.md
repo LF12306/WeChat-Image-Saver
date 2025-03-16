@@ -27,6 +27,9 @@
 git clone https://github.com/LF12306/WeChat-Image-Saver.git
 pip install -r requirements.txt
 python 自动保存工具.py
+
+```
+
 ⚙️ 配置说明
 功能	         操作方法
 添加监听对象	   输入联系人名称 → 点击添加
