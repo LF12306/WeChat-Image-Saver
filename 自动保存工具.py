@@ -6,6 +6,7 @@ import json
 import queue
 import re
 import hashlib
+import sys  # 新增这行导入
 import shutil
 from wxauto import WeChat
 from tkinter import *
@@ -40,7 +41,13 @@ class WeChatImageSaver:
         # 再初始化UI
         self.root = Tk()
         self.root.title("微信图片自动保存工具 v1.0")
+        # 设置窗口图标（关键修改点）
+        try:
+            self.root.iconbitmap(self._get_icon_path('app.ico'))
+        except Exception as e:
+            print(f"图标加载失败: {str(e)}")
         self._create_ui()  # 此时self.auto_start已存在
+
         
         # 后续初始化
         self.load_config()
@@ -65,6 +72,11 @@ class WeChatImageSaver:
         threading.Thread(target=self._process_queue, daemon=True).start()
         self._start_file_watcher()
         self.log("初始化完成")
+
+    def _get_icon_path(self, icon_name):
+        """获取图标绝对路径（兼容开发环境和打包环境）"""
+        base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+        return os.path.join(base_path, icon_name)
 
     def _create_ui(self):
         # 先创建所有UI元素
