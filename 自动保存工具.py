@@ -5,6 +5,7 @@ import threading
 import json
 import queue
 import re
+import uuid
 import hashlib
 import sys  # 新增这行导入
 import shutil
@@ -332,7 +333,7 @@ class WeChatImageSaver:
                 self.log(f"处理失败：{str(e)}", error=True)
 
     def _safe_transfer(self, src_path, sender):
-        """安全转移文件到发送者目录"""
+        """安全转移文件到发送者目录（防冲突版本）"""
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -344,23 +345,51 @@ class WeChatImageSaver:
                 target_dir = os.path.join(self.save_path, safe_name)
                 os.makedirs(target_dir, exist_ok=True)
                 
-                # 生成唯一文件名
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                file_hash = hashlib.md5(sender.encode()).hexdigest()[:6]
-                ext = os.path.splitext(src_path)[1]
-                filename = f"{timestamp}_{sender}{ext}"
+                # 生成唯一文件名（四重保障）
+                timestamp = datetime.now().strftime("%Y%m%d_%H时%M分%S秒%f")[:-3]  # 精确到毫秒
+                file_basename = os.path.basename(src_path)  # 获取原始文件名
+                
+                # 保障1：文件内容哈希
+                with open(src_path, 'rb') as f:
+                    content_hash = hashlib.md5(f.read()).hexdigest()[:8]
+                
+                # 保障2：随机UUID
+                random_uuid = uuid.uuid4().hex[:6]
+                
+                # 组合文件名
+                ext = os.path.splitext(file_basename)[1]
+                filename = f"{timestamp}_{safe_name}{ext}"
                 dest_path = os.path.join(target_dir, filename)
+                
+                # 保障3：冲突检测
+                if os.path.exists(dest_path):
+                    raise FileExistsError("文件名冲突检测")
                 
                 # 转移文件
                 shutil.move(src_path, dest_path)
                 self.log(f"[{safe_name}] 已保存：{filename}")
                 return True
                 
+            except FileExistsError:
+                # 保障4：冲突时自动追加序号
+                base_name = f"{timestamp}_{content_hash}_{random_uuid}_{safe_name}"
+                counter = 1
+                while True:
+                    new_filename = f"{base_name}_({counter}){ext}"
+                    new_dest = os.path.join(target_dir, new_filename)
+                    if not os.path.exists(new_dest):
+                        shutil.move(src_path, new_dest)
+                        self.log(f"[{safe_name}] 已保存（冲突解决）：{new_filename}")
+                        return True
+                    counter += 1
+                    
             except Exception as e:
                 if attempt == max_retries - 1:
-                    self.log(f"转移成功，文件已不在缓存目录中：{src_path}")
+                    self.log(f"最终转移失败：{src_path}", error=True)
                 time.sleep(0.5 * (attempt + 1))
         return False
+
+
     
 
 
