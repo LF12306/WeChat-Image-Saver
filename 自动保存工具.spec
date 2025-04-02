@@ -5,7 +5,7 @@ a = Analysis(
     ['自动保存工具.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('app.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

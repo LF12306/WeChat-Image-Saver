@@ -41,7 +41,7 @@ class WeChatImageSaver:
         
         # 再初始化UI
         self.root = Tk()
-        self.root.title("微信图片自动保存工具 v1.0")
+        self.root.title("微信图片自动保存工具 v1.2")
         # 设置窗口图标（关键修改点）
         try:
             self.root.iconbitmap(self._get_icon_path('app.ico'))
@@ -219,7 +219,7 @@ class WeChatImageSaver:
         if self.stop_event.is_set():
             return
         try:
-            max_wait = 3  # 最大等待时间延长到3秒
+            max_wait = 4  # 最大等待时间延长到4秒
             start_time = time.time()
             sender = None
             
@@ -333,7 +333,7 @@ class WeChatImageSaver:
                 self.log(f"处理失败：{str(e)}", error=True)
 
     def _safe_transfer(self, src_path, sender):
-        """安全转移文件到发送者目录（防冲突版本）"""
+        """安全转移文件到发送者目录（防冲突版本+日期分类）"""
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -342,13 +342,15 @@ class WeChatImageSaver:
                 
                 # 创建安全目录名
                 safe_name = re.sub(r'[\\/*?:"<>|]', '_', sender)
-                target_dir = os.path.join(self.save_path, safe_name)
+                # 添加日期分类目录
+                date_dir = datetime.now().strftime("%Y年%m月%d日")  # 改动点：新增日期目录
+                target_dir = os.path.join(self.save_path, safe_name, date_dir)  # 改动点：路径添加日期
                 os.makedirs(target_dir, exist_ok=True)
                 
                 # 生成唯一文件名（四重保障）
-                timestamp = datetime.now().strftime("%Y%m%d_%H时%M分%S秒%f")[:-3]  # 精确到毫秒
-                file_basename = os.path.basename(src_path)  # 获取原始文件名
-                
+                timestamp = datetime.now().strftime("%Y年%m月%d日_%H时%M分%S秒%f")[:-3]  
+                file_basename = os.path.basename(src_path)  
+
                 # 保障1：文件内容哈希
                 with open(src_path, 'rb') as f:
                     content_hash = hashlib.md5(f.read()).hexdigest()[:8]
@@ -388,6 +390,7 @@ class WeChatImageSaver:
                     self.log(f"最终转移失败：{src_path}", error=True)
                 time.sleep(0.5 * (attempt + 1))
         return False
+
 
 
     
